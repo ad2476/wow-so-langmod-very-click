@@ -1,6 +1,9 @@
 import tensorflow as tf
 import sys # for now?
 import codecs
+import pickle
+import numpy as np
+import nltk
 
 from nlptools import unk, STOP
 
@@ -11,6 +14,56 @@ embed_size = 30
 num_layers = 3
 max_length = 20
 
+""" This one doesn't use an LSTM but loads a pre-trained tensorflow graph
+     based on a non-linear bigram language model
+"""
+class ShittyClickbaitLangMod:
+  def __init__(self, model_file):
+    self._sess = tf.Session()
+    with open("%s.dict"%model_file, "rb") as f:
+      self._vocab = pickle.load(f)
+      
+    self.vocab_size = len(self._vocab.keys())
+    self._inv_map = {v: k for k, v in self._vocab.items()} # inverse map int id->string
+
+    saver = tf.train.import_meta_graph("%s.meta"%model_file)
+    saver.restore(self._sess, model_file) # restore the session
+
+    self._inpt = tf.get_collection('inpt')[0]
+    self._output = tf.get_collection('output')[0]
+    self._logits = tf.get_collection('logits')[0]
+    self._perplexity = tf.get_collection('perplexity')[0]
+
+    noise = tf.random_normal(tf.shape(self._logits),stddev=0.0)
+    self._probs = tf.nn.softmax(self._logits + noise) # convert to probabilities
+
+  def train(self):
+    pass # already trained
+
+  def generateClickbait(self, n):
+    stopcode = self._vocab[STOP]
+    #sentence = [ np.random.randint(vocab_size) ]
+    sentence = [ stopcode ]
+    while len(sentence) < n:
+      word = sentence[-1]
+      dist = np.array(self._probs.eval(feed_dict={self._inpt: [word]}, session=self._sess)[0])
+      dist /= dist.sum()
+      nword = np.random.choice(len(dist),p=dist)
+
+      if nword == stopcode:
+        break
+      sentence.append(nword)
+
+    s = sentence[1:] # exclude stop symbol
+    return "".join([self._inv_map[w]+" " for w in s]).strip()
+
+  """ Title as string """
+  def evaluateTitle(self, title):
+    title = nltk.word_tokenize("%s %s %s"%(STOP,title,STOP))
+    words = [self._vocab.get(w, 0) for w in title[:-1]]
+    nextwords = [self._vocab.get(w, 0) for w in title[1:]]
+    return self._perplexity.eval(feed_dict={self._inpt:words, self._output:nextwords}, session=self._sess)
+
 """ A lot (most) of this is borrowed from the tensorflow tutorial on LSTM-based langmods """
 class ClickbaitLangMod:
 
@@ -20,7 +73,7 @@ class ClickbaitLangMod:
     text_corpus = self._processCorpus()
     self._vocab = self._makeWordIDs(text_corpus) # map word to int id
     self._corpus = [[self._vocab[w] for w in line] for line in text_corpus]
-    self.vocab_size = len(self._vocab.keys())
+    self.vocab_size = len(self._vocab.keys()) + 1 # include invalid word
     print(self.vocab_size)
 
     # inputs and outputs:
@@ -61,7 +114,7 @@ class ClickbaitLangMod:
       words = l[:-1]
       nextwords = l[1:]
       if len(words) <= max_length:
-        words += [0]*(max_length - len(words))
+        words += [0]*(max_length - len(words)) # 0 is "invalid", doesn't map to real word
         nextwords += [0]*(max_length - len(nextwords))
 
         self._train_step.run(feed_dict={self._inpt: [words], self._targets: nextwords}, session=self.sess)
@@ -105,7 +158,7 @@ class ClickbaitLangMod:
   """ Read in a tokenised text file, unk it and return list of words """
   def _processCorpus(self):
     with codecs.open(self._train, "r",encoding='utf-8', errors='ignore') as f:
-      text = [(STOP+line+STOP).split() for line in f]
+      text = [("%s %s %s"%(STOP,line,STOP)).split() for line in f]
 
     counts = {} # map word->count
     for l in text:
