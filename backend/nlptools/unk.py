@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from rules import listToRuleset
+from . import rules
 
 class AbstractUnker:
   """ Initialise the class with:
-        corpus: a list of words - with STOP symbols - the corpus to substitute UNKs for
+        corpus: a list of sentences - each sentence a list of words - the corpus to substitute UNKs for
         counts: a dictionary mapping word->count
         unk_thresh: threshold count for when a word should be UNKed
                     i.e. only substitute UNK for words with count<=unk_thresh
@@ -23,7 +23,7 @@ class AbstractUnker:
     self._unkedCorpus = None # initialised in _processCorpus()
 
     self._abstractGuard() # raise error only if self is AbstractUnker but not a subclass
-    self._rulesetHead = listToRuleset(self._rulesList)
+    self._rulesetHead = rules.listToRuleset(self._rulesList)
     self._processCorpus()
 
 
@@ -53,13 +53,18 @@ class AbstractUnker:
   def _processCorpus(self):
     res = [] # will be a copy of the original corpus but with any UNK substitutions
 
-    for word in self._corpus:
-      # substitute UNK only if below threshold
-      if self._counts[word] <= self._thresh:
-        before = word
-        word = self._categoriseUnk(word)
+    for line in self._corpus:
+      newl = [] # the new line with UNK substituted
 
-      res.append(word) # append this word (poss. with sub.)
+      for word in line:
+        # substitute UNK only if below threshold
+        if self._counts[word] <= self._thresh:
+          before = word
+          word = self._categoriseUnk(word)
+
+        newl.append(word) # append this word (poss. with sub.)
+
+      res.append(newl) # append this line to the resulting list
 
     self._unkedCorpus = res
 
@@ -76,13 +81,13 @@ class AbstractUnker:
   def getUnkedCorpus(self):
     return self._unkedCorpus
 
-  """ Return the original word found in the ith position of
-       the unmodified corpus.
-       e.g. getOrigWord(0) will return "world"
-            for corpus=["hello", "world", "demo", "example"]
+  """ Return the original word found in the jth position of the ith
+       sentence of the unmodified corpus.
+       e.g. getOrigWord(0,1) will return "world"
+            for corpus=[["hello", "world"],["demo", "example"]]
   """
-  def getOrigWord(self, i):
-    return self._corpus[i]
+  def getOrigWord(self, i, j):
+    return self._corpus[i][j]
 
   """ Return the original corpus without any UNK substitutions """
   def getOrigCorpus(self):
