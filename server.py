@@ -1,5 +1,5 @@
 import flask
-from backend.model import ShittyClickbaitLangMod as cblm
+from model import ShittyClickbaitLangMod as cblm
 
 app = flask.Flask(__name__)
 m = cblm("backend/trained_models")
