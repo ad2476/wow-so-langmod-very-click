@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+        <!--Import Google Icon Font-->
+        <link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <!--Import materialize.css-->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/css/materialize.min.css">
+
+        <!--Let browser know website is optimized for mobile-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <style>
+            body {
+                background-color: #ffffff
+            }
+            h5 {
+                color: #009688
+            }
+        </style>
+        <script>
+           function showDiv(elementid) {
+            document.getElementById(elementid).style.display = "block";
+           }
+           function hideDiv(){
+            document.getElementById("generate").style.display = "none";
+            document.getElementById("evaluate").style.display = "none";
+            }
+        </script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    </head>
+
+    <body>
+    <!--Import jQuery before materialize.js-->
+    <div class="row center">
+        <h2 class="header col s12 light">
+            Wow so Langmod, Very click
+        </h2>
+        <p class="flow-text">
+            Use the buttons below to generate or evaluate clickbait phrases
+        </p>
+        <input type="button" name="generate_button" value="Generate" onclick="$.get( "/generate", function( data ) {$("output").text(data);});" class="waves-effect waves-light btn-large"/>
+        <input type="button" name="evaluate_button" value="Evaluate" onclick="hideDiv(); showDiv('evaluate');" class="waves-effect waves-light btn-large"/>
+        <div id="generate" style="display:none;">
+            <form action="/generate" method="get">
+                <button id="generate-submit" type="submit" name="generate-submit-button" class="waves-effect waves-light btn-large"> Submit </button>
+            </form>
+        </div>
+        <div id="evaluate" style="display:none;">
+            Evaluate
+            <form action="/evaluate" method="get">
+                <input id="evaluate-text" type="text" name="evaluate-text" placeholder="Enter Clickbait Here" />
+                <button id="evaluate-submit" type="submit" name="evaluate-submit-button" class="waves-effect waves-light btn-large"> Submit </button>
+            </form>
+        </div>
+        <div id="output"></div>
+
+
+    </div>
+    </body>
+  </html>
